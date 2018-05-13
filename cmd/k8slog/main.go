@@ -82,7 +82,7 @@ var cmd = &cobra.Command{
 			if !ok {
 				break
 			}
-			fmt.Printf(format(&logline))
+			fmt.Print(format(&logline))
 		}
 		return nil
 	},

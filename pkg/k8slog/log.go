@@ -21,9 +21,9 @@ type ResourceType = string
 
 const (
 	TypePod    ResourceType = "pod"
-	TypeDeploy              = "deploy"
+	TypeDeploy ResourceType = "deploy"
 
-	defaultNamespace = "default"
+	defaultNamespace string = "default"
 )
 
 var (
