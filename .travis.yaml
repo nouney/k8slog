@@ -1,0 +1,7 @@
+language: go
+script: go build cmd/k8slog/*.go
+os:
+  - linux
+  - osx
+go:
+  - "1.10.x"
