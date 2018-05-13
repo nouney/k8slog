@@ -36,6 +36,8 @@ import (
 var (
 	flagFollow     = false
 	flagColors     = true
+	flagTimestamp  = true
+	flagPrefix     = true
 	flagKubeconfig = ""
 	flagJSONFields = []string{}
 )
@@ -58,14 +60,19 @@ var cmd = &cobra.Command{
 			return err
 		}
 
-		klog := k8slog.New(k8s, k8slog.WithOptsJSONFields(flagJSONFields...), k8slog.WithOptsFollow(flagFollow))
+		klog := k8slog.New(
+			k8s,
+			k8slog.WithOptsTimestamps(flagTimestamp),
+			k8slog.WithOptsJSONFields(flagJSONFields...),
+			k8slog.WithOptsFollow(flagFollow),
+		)
 		out, err := klog.Logs(args...)
 		if err != nil {
 			return err
 		}
 
 		cp := colorpicker.New()
-		format := formatter(cp, len(args) > 1)
+		format := formatter(cp)
 		for {
 			logline, ok := <-out
 			if !ok {
@@ -77,24 +84,24 @@ var cmd = &cobra.Command{
 	},
 }
 
-func formatter(cp *colorpicker.ColorPicker, multiple bool) func(logline *k8slog.Line) string {
-	if !multiple {
-		return func(logline *k8slog.Line) string {
+func formatter(cp *colorpicker.ColorPicker) func(logline *k8slog.LogLine) string {
+	if !flagPrefix {
+		return func(logline *k8slog.LogLine) string {
 			return logline.Line
 		}
 	}
-	var podName func(*k8slog.Line) string
+	var podName func(*k8slog.LogLine) string
 	if flagColors {
-		podName = func(logline *k8slog.Line) string {
+		podName = func(logline *k8slog.LogLine) string {
 			color := cp.Pick(logline.Pod)
 			return color.Sprint(logline.Pod)
 		}
 	} else {
-		podName = func(logline *k8slog.Line) string {
+		podName = func(logline *k8slog.LogLine) string {
 			return logline.Pod
 		}
 	}
-	return func(logline *k8slog.Line) string {
+	return func(logline *k8slog.LogLine) string {
 		return concat("[", logline.Namespace, "][", podName(logline), "]: ", logline.Line)
 	}
 }
@@ -113,7 +120,9 @@ func init() {
 		defaultKubeconfig = filepath.Join(home, ".kube", "config")
 	}
 	cmd.PersistentFlags().StringVar(&flagKubeconfig, "kubeconfig", defaultKubeconfig, "absolute path to the kubeconfig file")
-	cmd.PersistentFlags().BoolVar(&flagColors, "colors", true, "enable colors")
+	cmd.Flags().BoolVarP(&flagColors, "colors", "c", true, "enable colors")
 	cmd.Flags().BoolVarP(&flagFollow, "follow", "f", false, "follow the logs")
+	cmd.Flags().BoolVarP(&flagTimestamp, "timestamp", "t", true, "print timestamp")
+	cmd.Flags().BoolVarP(&flagPrefix, "prefix", "p", true, "print prefix")
 	cmd.Flags().StringSliceVarP(&flagJSONFields, "json", "j", nil, "json log only, print a specific field")
 }
