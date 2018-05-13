@@ -18,8 +18,8 @@ var (
 
 // LogLine is a log line of a pod
 type LogLine struct {
-	// Namespace is the namespace of the pod
-	Namespace string
+	resource
+
 	// Pod is the name of the pod
 	Pod string
 	// Line is the log line itself

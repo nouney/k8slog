@@ -24,9 +24,9 @@ func (d Deployment) GetLogs(opts *k8s.PodLogOptions) (<-chan LogLine, error) {
 		// so we can handle new ones as they're created
 		c := make(chan LogLine)
 		out = c
-		watchPodsAndGetLogs(c, d.k8s, d.Namespace, deploy.Spec.Selector, opts)
+		d.watchPodsAndGetLogs(c, deploy.Spec.Selector, opts)
 	} else {
-		out, err = listPodsAndGetLogs(d.k8s, d.Namespace, deploy.Spec.Selector, opts)
+		out, err = d.listPodsAndGetLogs(deploy.Spec.Selector, opts)
 	}
 	return out, err
 }

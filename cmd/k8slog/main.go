@@ -73,7 +73,7 @@ func formatter(cp *colorpicker.ColorPicker) func(logline *k8slog.LogLine) string
 	var podName func(*k8slog.LogLine) string
 	if flagColors {
 		podName = func(logline *k8slog.LogLine) string {
-			color := cp.Pick(logline.Pod)
+			color := cp.Pick(logline.Namespace + "/" + string(logline.Type) + "/" + logline.Name)
 			return color.Sprint(logline.Pod)
 		}
 	} else {

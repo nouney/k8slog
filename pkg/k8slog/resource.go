@@ -92,8 +92,8 @@ type resource struct {
 // watchAndGetLogs watch pods matching the label selector in a specific namespace and retrieve their logs
 //
 // Async function
-func watchPodsAndGetLogs(out chan<- LogLine, k8sclient *k8s.Client, ns string, selector *k8s.LabelSelector, opts *k8s.PodLogOptions) {
-	k8s.WatchPods(k8sclient, ns, selector,
+func (r resource) watchPodsAndGetLogs(out chan<- LogLine, selector *k8s.LabelSelector, opts *k8s.PodLogOptions) {
+	k8s.WatchPods(r.k8s, r.Namespace, selector,
 		func(pod *k8s.Pod) {
 			// a pod matching the selector was created
 			log.Printf("new pod \"%s\"", pod.ObjectMeta.Name)
@@ -102,7 +102,7 @@ func watchPodsAndGetLogs(out chan<- LogLine, k8sclient *k8s.Client, ns string, s
 			// (image pull, init containers, etc.)
 			err := backoff.Retry(
 				func() error {
-					return getPodLogs(out, k8sclient, pod.Namespace, pod.Name, opts)
+					return r.getPodLogs(out, pod.Name, opts)
 				},
 				backoff.NewConstantBackOff(1*time.Second),
 			)
@@ -116,8 +116,8 @@ func watchPodsAndGetLogs(out chan<- LogLine, k8sclient *k8s.Client, ns string, s
 // listPodsAndGetLogs lists pods maching the label selector in a specific namespace and retrieve their logs
 //
 // Async function
-func listPodsAndGetLogs(k8sclient *k8s.Client, ns string, selector *k8s.LabelSelector, opts *k8s.PodLogOptions) (<-chan LogLine, error) {
-	pods, err := k8s.ListPods(k8sclient, ns, selector)
+func (r resource) listPodsAndGetLogs(selector *k8s.LabelSelector, opts *k8s.PodLogOptions) (<-chan LogLine, error) {
+	pods, err := k8s.ListPods(r.k8s, r.Namespace, selector)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func listPodsAndGetLogs(k8sclient *k8s.Client, ns string, selector *k8s.LabelSel
 		for _, pod := range pods {
 			go func(pod *k8s.Pod) {
 				defer wg.Done()
-				err := getPodLogs(out, k8sclient, ns, pod.Name, opts)
+				err := r.getPodLogs(out, pod.Name, opts)
 				if err != nil {
 					log.Printf("error: %s", err.Error())
 				}
@@ -143,17 +143,17 @@ func listPodsAndGetLogs(k8sclient *k8s.Client, ns string, selector *k8s.LabelSel
 // getPodLogs retrieve logs of a pod
 //
 // Sync function
-func getPodLogs(out chan<- LogLine, k8sclient *k8s.Client, ns, name string, opts *k8s.PodLogOptions) error {
-	rc, err := k8s.GetPodLogs(k8sclient, ns, name, opts)
+func (r resource) getPodLogs(out chan<- LogLine, name string, opts *k8s.PodLogOptions) error {
+	rc, err := k8s.GetPodLogs(r.k8s, r.Namespace, name, opts)
 	if err != nil {
 		return errors.Wrap(err, "get logs")
 	}
-	r := bufio.NewReader(rc)
+	rdr := bufio.NewReader(rc)
 	if opts.Follow {
 		log.Printf("pod \"%s\": start streaming", name)
 	}
 	for {
-		line, err := r.ReadBytes('\n')
+		line, err := rdr.ReadBytes('\n')
 		if err == io.EOF {
 			if opts.Follow {
 				log.Printf("pod \"%s\": end streaming", name)
@@ -163,7 +163,7 @@ func getPodLogs(out chan<- LogLine, k8sclient *k8s.Client, ns, name string, opts
 		if err != nil {
 			return errors.Wrap(err, "read")
 		}
-		out <- LogLine{ns, name, string(line)}
+		out <- LogLine{r, name, string(line)}
 	}
 	return nil
 }

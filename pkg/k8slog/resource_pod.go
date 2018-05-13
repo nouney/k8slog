@@ -15,7 +15,7 @@ type Pod struct {
 func (p Pod) GetLogs(opts *k8s.PodLogOptions) (<-chan LogLine, error) {
 	out := make(chan LogLine)
 	go func() {
-		err := getPodLogs(out, p.k8s, p.Namespace, p.Name, opts)
+		err := p.getPodLogs(out, p.Name, opts)
 		if err != nil {
 			log.Fatal(err)
 		}
