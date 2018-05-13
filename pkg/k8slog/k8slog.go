@@ -126,6 +126,9 @@ func (c Client) logs(out chan<- LogLine, res string) error {
 		return err
 	}
 	stream, err := r.GetLogs(&k8s.PodLogOptions{Timestamps: c.timestamps, Follow: c.follow})
+	if err != nil {
+		return err
+	}
 	for {
 		line, ok := <-stream
 		if !ok {
@@ -135,94 +138,7 @@ func (c Client) logs(out chan<- LogLine, res string) error {
 		out <- line
 	}
 	return nil
-	// ns, typ, name, err := parseResource(res)
-	// if err != nil {
-	// 	return err
-	// }
-	// switch typ {
-	// case TypePod:
-	// 	err = c.podLogs(ns, name, out, wg)
-	// case TypeDeploy:
-	// 	err = c.deployLogs(ns, name, out, wg)
-	// }
-	// // ici: on cree une Resource et on appelle GetLogs dessus
-	// return err
 }
-
-// // podLogs retrieve logs of a pod resource
-// func (c Client) podLogs(ns, name string, out chan<- Line, wg *sync.WaitGroup) error {
-// 	wg.Add(1)
-// 	go func() {
-// 		c.getPodLogs(ns, name, out)
-// 		wg.Done()
-// 	}()
-// 	return nil
-// }
-
-// // deployLogs retrieve logs of a deployment resource
-// func (c Client) deployLogs(ns, name string, out chan<- Line, wg *sync.WaitGroup) error {
-// 	deploy, err := k8s.GetDeployment(c.k8s, ns, name)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if c.follow {
-// 		c.watchAndGetLogs(ns, deploy.Spec.Selector, out)
-// 		return nil
-// 	}
-// 	pods, err := k8s.ListPods(c.k8s, ns, deploy.Spec.Selector)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	for _, pod := range pods {
-// 		c.podLogs(pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, out, wg)
-// 	}
-// 	return nil
-// }
-
-// // watchAndGetLogs watch pods matching the label selector in a specific namespace and retrieve their logs
-// func (c Client) watchAndGetLogs(ns string, selector *k8s.LabelSelector, out chan<- Line) {
-// 	k8s.WatchPods(c.k8s, ns, selector,
-// 		func(pod *v1.Pod) {
-// 			// a pod matching the selector was created
-// 			// go func() {
-// 			log.Printf("new pod \"%s\"", pod.ObjectMeta.Name)
-// 			// we need a retry mechanism since the pod can take a moment to be running
-// 			// (image pull, init containers, etc.)
-// 			operation := func() error {
-// 				return c.getPodLogs(pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, out)
-// 			}
-// 			err := backoff.Retry(operation, backoff.NewConstantBackOff(1*time.Second))
-// 			if err != nil {
-// 				log.Printf("error: %s", err.Error())
-// 			}
-// 			log.Printf("pod \"%s\": start streaming", pod.ObjectMeta.Name)
-// 			// }()
-
-// 		}, nil, nil)
-// }
-
-// // getPodLogs retrieve logs of a pod
-// func (c Client) getPodLogs(ns, name string, out chan<- Line) error {
-// 	rc, err := k8s.GetPodLogs(c.k8s, ns, name, &k8s.PodLogOptions{Timestamps: c.timestamps, Follow: c.follow})
-// 	if err != nil {
-// 		return errors.Wrap(err, "get logs")
-// 	}
-
-// 	r := bufio.NewReader(rc)
-// 	for {
-// 		line, err := r.ReadBytes('\n')
-// 		if err == io.EOF {
-// 			break
-// 		}
-// 		if err != nil {
-// 			return errors.Wrap(err, "read")
-// 		}
-// 		out <- Line{ns, name, c.refineLine(line)}
-// 	}
-// 	return nil
-// }
 
 func (c Client) refineLine(line string) string {
 	if c.jsonFieldsLen == 0 {

@@ -1,7 +1,6 @@
 package colorpicker
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -74,10 +73,6 @@ func (cp *ColorPicker) Pick(id string) *color.Color {
 	return clr
 }
 
-func (cp ColorPicker) palette() {
-	palette(cp.fgColors, cp.styles)
-}
-
 func (cp ColorPicker) randomFgColor() color.Attribute {
 	i := cp.src.Int63() % int64(len(cp.fgColors))
 	return cp.fgColors[i]
@@ -86,14 +81,4 @@ func (cp ColorPicker) randomFgColor() color.Attribute {
 func (cp ColorPicker) randomStyle() color.Attribute {
 	i := cp.src.Int63() % int64(len(cp.styles))
 	return cp.styles[i]
-}
-
-func palette(fgColors, styles []color.Attribute) {
-	for _, style := range styles {
-		for _, fgColor := range fgColors {
-			color := color.New(fgColor, style)
-			color.Print(" ", style, fgColor, " ")
-		}
-		fmt.Println()
-	}
 }
