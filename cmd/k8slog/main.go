@@ -35,6 +35,7 @@ import (
 
 var (
 	flagFollow     = false
+	flagColors     = true
 	flagKubeconfig = ""
 	flagJSONFields = []string{}
 )
@@ -64,19 +65,7 @@ var cmd = &cobra.Command{
 		}
 
 		cp := colorpicker.New()
-		var format func(str *k8slog.Line) string
-		if len(args) > 1 {
-			format = func(logline *k8slog.Line) string {
-				color := cp.Pick(logline.Pod)
-				podName := color.Sprint(logline.Pod)
-				return concat("[", logline.Namespace, "][", podName, "]: ", logline.Line)
-			}
-		} else {
-			format = func(logline *k8slog.Line) string {
-				return logline.Line
-			}
-		}
-
+		format := formatter(cp, len(args) > 1)
 		for {
 			logline, ok := <-out
 			if !ok {
@@ -86,6 +75,28 @@ var cmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func formatter(cp *colorpicker.ColorPicker, multiple bool) func(logline *k8slog.Line) string {
+	if !multiple {
+		return func(logline *k8slog.Line) string {
+			return logline.Line
+		}
+	}
+	var podName func(*k8slog.Line) string
+	if flagColors {
+		podName = func(logline *k8slog.Line) string {
+			color := cp.Pick(logline.Pod)
+			return color.Sprint(logline.Pod)
+		}
+	} else {
+		podName = func(logline *k8slog.Line) string {
+			return logline.Pod
+		}
+	}
+	return func(logline *k8slog.Line) string {
+		return concat("[", logline.Namespace, "][", podName(logline), "]: ", logline.Line)
+	}
 }
 
 func concat(strs ...string) string {
@@ -102,6 +113,7 @@ func init() {
 		defaultKubeconfig = filepath.Join(home, ".kube", "config")
 	}
 	cmd.PersistentFlags().StringVar(&flagKubeconfig, "kubeconfig", defaultKubeconfig, "absolute path to the kubeconfig file")
+	cmd.PersistentFlags().BoolVar(&flagColors, "colors", true, "enable colors")
 	cmd.Flags().BoolVarP(&flagFollow, "follow", "f", false, "follow the logs")
 	cmd.Flags().StringSliceVarP(&flagJSONFields, "json", "j", nil, "json log only, print a specific field")
 }
