@@ -17,45 +17,63 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// ResourceType represents a k8s resource type
 type ResourceType = string
 
 const (
-	TypePod    ResourceType = "pod"
+	// TypePod is the resource type for pods
+	TypePod ResourceType = "pod"
+	// TypeDeploy is the resource type for deployments
 	TypeDeploy ResourceType = "deploy"
 
 	defaultNamespace string = "default"
 )
 
 var (
+	// ErrInvalidResourceType is returned when the given resource type is invalid
 	ErrInvalidResourceType = errors.New("invalid resource type")
 )
 
+// Line is a log line of a pod
 type Line struct {
+	// Namespace is the namespace of the pod
 	Namespace string
-	Pod       string
-	Line      string
+	// Pod is the name of the pod
+	Pod string
+	// Line is the log line itself
+	Line string
 }
 
+// Client allows to retrieve logs of differents resources on k8s
 type Client struct {
 	k8s        *kubernetes.Clientset
 	jsonFields []string
 	follow     bool
 }
 
+// Opts is an option used to configure Client
 type Opts func(c *Client)
 
+// WithOptsFollow configure the follow option
+//
+// If the follow option is enabled, the client will follow the log stream of the resources.
+// If the given resource is not a pod, the client will also watch for new pods of the resource.
 func WithOptsFollow(value bool) Opts {
 	return func(c *Client) {
 		c.follow = value
 	}
 }
 
+// WithOptsJSONFIelds configure the json option
+//
+// If enabled, log lines will be handled as JSON objects and only the given fields will be printed.
 func WithOptsJSONFields(fields ...string) Opts {
 	return func(c *Client) {
 		c.jsonFields = fields
 	}
 }
 
+// New creates a new Client
 func New(k8s *kubernetes.Clientset, opts ...Opts) *Client {
 	c := &Client{k8s: k8s}
 	for _, opt := range opts {
@@ -64,6 +82,17 @@ func New(k8s *kubernetes.Clientset, opts ...Opts) *Client {
 	return c
 }
 
+// Logs retrieve logs of on or multiple resource.
+//
+// A resource can be a pod, a deployment, a statefulsets, etc.
+// It can has the following forms:
+//	- X/Y/Z: all the pods of the resource "Z" of type "Y" in namespace "X"
+//	- Y/Z: all the pods of the resource "Z" of type "Y" in namespace "default"
+//	- Z: the pod "Z" in namespace "default"
+// Examples:
+//	- mysvc-abcd: the pod "mysvc-abcd" in namespace "default"
+//	- deploy/mysvc: all the pods of the deployment "mysvc" in namespace "default"
+//	- prod/deploy/mysvc: all the pods of the deployment "mysvc" in namespace "prod"
 func (c Client) Logs(ress ...string) (<-chan Line, error) {
 	out := make(chan Line)
 	go func() {

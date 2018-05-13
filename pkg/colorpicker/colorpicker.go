@@ -13,6 +13,7 @@ type key struct {
 	style color.Attribute
 }
 
+// ColorPicker allows you to assign a unique random color to an id.
 type ColorPicker struct {
 	fgColors []color.Attribute
 	styles   []color.Attribute
@@ -21,6 +22,7 @@ type ColorPicker struct {
 	src      rand.Source
 }
 
+// New creates a new ColorPicker.
 func New() *ColorPicker {
 	return &ColorPicker{
 		fgColors: []color.Attribute{
@@ -51,6 +53,7 @@ func New() *ColorPicker {
 	}
 }
 
+// Pick picks a color for the id, generating a new random color if necessary.
 func (cp *ColorPicker) Pick(id string) *color.Color {
 	clr := cp.colors[id]
 	if clr != nil {
@@ -71,7 +74,7 @@ func (cp *ColorPicker) Pick(id string) *color.Color {
 	return clr
 }
 
-func (cp ColorPicker) Palette() {
+func (cp ColorPicker) palette() {
 	palette(cp.fgColors, cp.styles)
 }
 

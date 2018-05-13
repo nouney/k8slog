@@ -9,21 +9,26 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	// auth against GKE clusters
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 type (
-	Client        = kubernetes.Clientset
+	// Client is a kubernetes client
+	Client = kubernetes.Clientset
+	// PodLogOptions is an alias to kubernetes' PodLogOptions
 	PodLogOptions = v1.PodLogOptions
-	Pod           = v1.Pod
+	// Pod is an alias to kubernetes' Pod
+	Pod = v1.Pod
+	// LabelSelector is an alias to kubernetes' LabelSelector
 	LabelSelector = metav1.LabelSelector
 )
 
 // NewClient creates a new kubernetes client
 //
-// It will use the current context in the kubeconfig.
+// It uses the current context in the kubeconfig file
 func NewClient(kubeconfig string) (*Client, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
