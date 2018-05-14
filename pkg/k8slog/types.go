@@ -19,10 +19,10 @@ const (
 	// TypeService is the resource type for services
 	TypeService
 
-	lastType = TypeService
+	lastType = TypeService + 1
 )
 
-var types [lastType + 1]func(resource) Resource
+var types [lastType]func(resource) Resource
 var strTypes map[string]ResourceType
 
 func strTypeToConst(str string) (ResourceType, error) {
