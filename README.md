@@ -99,6 +99,7 @@ You can retrieve logs as they come through by using the `-f` or `--follow` flags
 k8slog will watch the resources and get logs from pods controlled by them (except for pod resources). So by example if you retrieve logs of a deployment that you scale it up just after, k8slog will also handle the new pods.
 
 ### Output
+
 #### JSON
 
 ```shell
@@ -109,8 +110,8 @@ This feature is useful if you format your logs as JSON objects. k8slog will pars
 and only print the fields you want. The fields are printed in the given order.
 
 #### Prefix
-```
-shell
+
+```shell
 $ k8slog --prefix=[false|true] [resources...]
 ```
 k8slog begins each line with a prefix of the form `[namespace][pod-name]` to differenciate the resources.
