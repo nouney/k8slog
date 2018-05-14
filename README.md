@@ -1,6 +1,6 @@
 # k8slog [![Build Status](https://travis-ci.org/nouney/k8slog.svg?branch=master)](https://travis-ci.org/nouney/k8slog)
 
-k8slog aims to provide an lightweight, easy and efficient way to retrieve logs from pods running in a Kubernetes cluster, kind of `kubectl logs` on steroids.
+k8slog aims to provide an lightweight, quick and easy way to retrieve logs from pods running in a Kubernetes cluster (kind of `kubectl logs` on steroids).
 
 This project is in its early stages and will evolve quickly.
 
@@ -87,15 +87,15 @@ $ k8slog [resources...]
 
 Retrieve logs. Same as `kubectl logs`.
 
-#### Live
+#### Stream
 
 ```shell
 $ k8slog -f [resources...]
 ```
 
-You can stream logs by using the `-f` or `--follow` flags. In this case, `k8slog` hangs forever and you have to stop it with Ctrl-C. 
+You can retrieve logs as they come through by using the `-f` or `--follow` flags. In this case, k8slog never returns and waits for new logs to print. Use Ctrl-C to quit it.
 
-k8slog will watch the resources and stream logs from pods controlled by it (except for pod resources). So by example if you stream logs of a deployment and you scale it up, k8slog will also handle the new pods.
+k8slog will watch the resources and get logs from pods controlled by them (except for pod resources). So by example if you retrieve logs of a deployment that you scale it up just after, k8slog will also handle the new pods.
 
 ### Output
 #### JSON
@@ -131,5 +131,6 @@ $ k8slog --timestamp=[false|true] [resources...]
 ```
 
 By default, k8slog retrieve the timestamp of the log lines and print it just after the prefix.
+You can disable the colors by setting the flag `--timestamp` to false.
 
 `--timestamp` is forced to false if `--json` is set.
