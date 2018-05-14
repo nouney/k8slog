@@ -73,15 +73,16 @@ Some examples:
 - `preprod/pod/mysvc-abcd`: pod "mysvc-abcd" in namespace "preprod"
 - `mysvc-abcd`: pod "mysvc-abcd" in namespace "default"
 
-### Retrieve logs
 
-##### Types
+#### Types
 
 - pod, po
 - deployment, deploy
 - statefulset, sts
 - replicaset, rs
 - service, svc
+
+### Retrieve logs
 
 #### Snapshot
 
