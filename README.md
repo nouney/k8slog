@@ -63,8 +63,7 @@ $ go install github.com/nouney/k8slog/cmd/k8slog
 
 >   $GOPATH/bin must be in your $PATH
 
-### Retrieve logs
-#### Resource string
+### Resource string
 
 k8slog uses a string to represent a Kubernetes resource. This string has the following form:  `namespace/resource-type/resource-name`. `namespace` defaults to `default` and `resource-type` defaults to `pod`.
 
@@ -73,6 +72,8 @@ Some examples:
 - `preprod/pod/mysvc-abcd`: pod "mysvc-abcd" in namespace "preprod"
 - `deploy/mysvc`: deployment "mysvc" in namespace "default"
 - `mysvc-abcd`: pod "mysvc-abcd" in namespace "default"
+
+### Retrieve logs
 
 ##### Types
 
