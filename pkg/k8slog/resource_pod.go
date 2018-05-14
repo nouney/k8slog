@@ -23,3 +23,13 @@ func (p Pod) GetLogs(opts *k8s.PodLogOptions) (<-chan LogLine, error) {
 	}()
 	return out, nil
 }
+
+func init() {
+	registerType(
+		TypePod,
+		func(r resource) Resource {
+			return &Pod{r}
+		},
+		"pod", "po",
+	)
+}

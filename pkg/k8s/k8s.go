@@ -9,10 +9,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // gke clusters
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	// auth against GKE clusters
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 type (
@@ -41,10 +40,28 @@ func NewClient(kubeconfig string) (*Client, error) {
 	return client, nil
 }
 
-// GetDeployment gets a deployment object
+// GetDeployment gets a Deployment object
 func GetDeployment(k8s *Client, ns, name string) (*appsv1.Deployment, error) {
 	deploySvc := k8s.AppsV1().Deployments(ns)
 	return deploySvc.Get(name, metav1.GetOptions{})
+}
+
+// GetStatefulSet gets a StatefulSet object
+func GetStatefulSet(k8s *Client, ns, name string) (*appsv1.StatefulSet, error) {
+	ssSvc := k8s.AppsV1().StatefulSets(ns)
+	return ssSvc.Get(name, metav1.GetOptions{})
+}
+
+// GetReplicaSet gets a ReplicaSet object
+func GetReplicaSet(k8s *Client, ns, name string) (*appsv1.ReplicaSet, error) {
+	ssSvc := k8s.AppsV1().ReplicaSets(ns)
+	return ssSvc.Get(name, metav1.GetOptions{})
+}
+
+// GetService gets a Service object
+func GetService(k8s *Client, ns, name string) (*v1.Service, error) {
+	ssSvc := k8s.CoreV1().Services(ns)
+	return ssSvc.Get(name, metav1.GetOptions{})
 }
 
 // ListPods lists pods matching the label selector

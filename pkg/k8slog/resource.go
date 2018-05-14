@@ -2,7 +2,6 @@ package k8slog
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -14,17 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ResourceType represents a k8s resource type
-type ResourceType int
-
 const (
-	// TypeUnknown is an unknown resource type
-	TypeUnknown ResourceType = iota
-	// TypePod is the resource type for pods
-	TypePod
-	// TypeDeploy is the resource type for deployments
-	TypeDeploy
-
 	defaultNamespace string = "default"
 )
 
@@ -61,25 +50,28 @@ func NewResource(k8s *k8s.Client, res string) (Resource, error) {
 		r.Name = chunks[0]
 	} else if nbc == 2 {
 		// Y/Z: all the pods of the resource "Z" of type "Y" in namespace "default"
-		r.Type, err = validateResourceType(chunks[0])
+		r.Type, err = strTypeToConst(chunks[0])
 		r.Name = chunks[1]
 	} else if nbc == 3 {
 		// X/Y/Z: all the pods of the resource "Z" of type "Y" in namespace "X"
 		r.Namespace = chunks[0]
-		r.Type, err = validateResourceType(chunks[1])
+		r.Type, err = strTypeToConst(chunks[1])
 		r.Name = chunks[2]
 	}
 	if err != nil {
 		return nil, err
 	}
-	var ret Resource
-	switch r.Type {
-	case TypePod:
-		ret = &Pod{r}
-	case TypeDeploy:
-		ret = &Deployment{r}
-	}
-	return ret, nil
+	return types[r.Type](r), nil
+	// var ret Resource
+	// switch r.Type {
+	// case TypePod:
+	// 	ret = &Pod{r}
+	// case TypeDeploy:
+	// 	ret = &Deployment{r}
+	// case TypeStatefulSet:
+	// 	ret = &StatefulSet{r}
+	// }
+	// return ret, nil
 }
 
 type resource struct {
@@ -87,6 +79,20 @@ type resource struct {
 	Type      ResourceType
 	Namespace string
 	Name      string
+}
+
+func (r resource) getLogs(opts *k8s.PodLogOptions, selector *k8s.LabelSelector) (<-chan LogLine, error) {
+	var out chan LogLine
+	var err error
+	if opts.Follow {
+		out = make(chan LogLine)
+		// If we follow the log stream, we must watch the ressource's pods
+		// so we can handle new ones as they're created
+		r.watchPodsAndGetLogs(out, selector, opts)
+	} else {
+		out, err = r.listPodsAndGetLogs(selector, opts)
+	}
+	return out, err
 }
 
 // watchAndGetLogs watch pods matching the label selector in a specific namespace and retrieve their logs
@@ -116,7 +122,7 @@ func (r resource) watchPodsAndGetLogs(out chan<- LogLine, selector *k8s.LabelSel
 // listPodsAndGetLogs lists pods maching the label selector in a specific namespace and retrieve their logs
 //
 // Async function
-func (r resource) listPodsAndGetLogs(selector *k8s.LabelSelector, opts *k8s.PodLogOptions) (<-chan LogLine, error) {
+func (r resource) listPodsAndGetLogs(selector *k8s.LabelSelector, opts *k8s.PodLogOptions) (chan LogLine, error) {
 	pods, err := k8s.ListPods(r.k8s, r.Namespace, selector)
 	if err != nil {
 		return nil, err
@@ -168,13 +174,15 @@ func (r resource) getPodLogs(out chan<- LogLine, name string, opts *k8s.PodLogOp
 	return nil
 }
 
-func validateResourceType(t string) (ResourceType, error) {
-	switch t {
-	case "pod", "po":
-		return TypePod, nil
-	case "deployment", "deploy":
-		return TypeDeploy, nil
-	default:
-		return TypeUnknown, fmt.Errorf("unknown resource type: %s", t)
-	}
-}
+// func validateResourceType(t string) (ResourceType, error) {
+// 	switch t {
+// 	case "pod", "po":
+// 		return TypePod, nil
+// 	case "deployment", "deploy":
+// 		return TypeDeploy, nil
+// 	case "statefulset", "sts":
+// 		return TypeStatefulSet, nil
+// 	default:
+// 		return TypeUnknown, fmt.Errorf("unknown resource type: %s", t)
+// 	}
+// }

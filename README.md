@@ -28,7 +28,7 @@ $ k8slog deploy/mysvc # same as default/deploy/mysvc
 $ k8slog mysvc-abcd # same as default/pod/mysvc-abcd
 
 # Get multiple logs at once
-$ k8slog mypod preprod/pod/mysvc-abcd prod/deploy/mysvc
+$ k8slog mypod preprod/svc/mysvc prod/statefulset/mysts
 
 # Follow the logs
 $ k8slog deploy/mysvc
@@ -69,8 +69,8 @@ k8slog uses a string to represent a Kubernetes resource. This string has the fol
 
 Some examples:
 - `prod/deploy/mysvc`: deployment "mysvc" in namespace "prod"
+- `svc/mysvc`: service "mysvc" in namespace "default"
 - `preprod/pod/mysvc-abcd`: pod "mysvc-abcd" in namespace "preprod"
-- `deploy/mysvc`: deployment "mysvc" in namespace "default"
 - `mysvc-abcd`: pod "mysvc-abcd" in namespace "default"
 
 ### Retrieve logs
@@ -79,6 +79,9 @@ Some examples:
 
 - pod, po
 - deployment, deploy
+- statefulset, sts
+- replicaset, rs
+- service, svc
 
 #### Snapshot
 

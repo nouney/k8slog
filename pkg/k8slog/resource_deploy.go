@@ -17,16 +17,15 @@ func (d Deployment) GetLogs(opts *k8s.PodLogOptions) (<-chan LogLine, error) {
 	if err != nil {
 		return nil, err
 	}
+	return d.getLogs(opts, deploy.Spec.Selector)
+}
 
-	var out <-chan LogLine
-	if opts.Follow {
-		// If we follow the log stream, we must watch the deployment's pods
-		// so we can handle new ones as they're created
-		c := make(chan LogLine)
-		out = c
-		d.watchPodsAndGetLogs(c, deploy.Spec.Selector, opts)
-	} else {
-		out, err = d.listPodsAndGetLogs(deploy.Spec.Selector, opts)
-	}
-	return out, err
+func init() {
+	registerType(
+		TypeDeploy,
+		func(r resource) Resource {
+			return &Deployment{r}
+		},
+		"deployment", "deploy",
+	)
 }
