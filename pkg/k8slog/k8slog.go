@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/nouney/k8slog/pkg/k8s"
 	"github.com/pkg/errors"
@@ -125,7 +126,16 @@ func (c Client) logs(out chan<- LogLine, res string) error {
 	if err != nil {
 		return err
 	}
-	stream, err := r.GetLogs(&k8s.PodLogOptions{Timestamps: c.timestamps, Follow: c.follow})
+	var since *int64
+	if c.follow {
+		since = new(int64)
+		*since = int64(time.Now().Second())
+	}
+	stream, err := r.GetLogs(&k8s.PodLogOptions{
+		Timestamps:   c.timestamps,
+		Follow:       c.follow,
+		SinceSeconds: since,
+	})
 	if err != nil {
 		return err
 	}
