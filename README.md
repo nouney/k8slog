@@ -1,6 +1,6 @@
 # k8slog [![Build Status](https://travis-ci.org/nouney/k8slog.svg?branch=master)](https://travis-ci.org/nouney/k8slog)
 
-k8slog aims to provide an lightweight, quick and easy way to retrieve logs from pods running in a Kubernetes cluster (kind of `kubectl logs` on steroids).
+k8slog aims to provide a quick and easy way to view logs from pods running in a Kubernetes cluster.
 
 This project is in its early stages and will evolve quickly.
 
@@ -98,7 +98,7 @@ Retrieve logs. Same as `kubectl logs`.
 $ k8slog -f [resources...]
 ```
 
-You can retrieve logs as they come through by using the `-f` or `--follow` flags. In this case, k8slog never returns and waits for new logs to print. Use Ctrl-C to quit it.
+You can view logs as they come through by using the `-f` or `--follow` flags. In this case, k8slog never returns and waits for new logs to print. Use Ctrl-C to quit it.
 
 k8slog will watch the resources and get logs from pods controlled by them (except for pod resources). So by example if you retrieve logs of a deployment that you scale it up just after, k8slog will also handle the new pods.
 
