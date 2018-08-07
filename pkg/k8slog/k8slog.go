@@ -36,42 +36,41 @@ type Client struct {
 	timestamps    bool
 }
 
-// Opts is an option used to configure Client
-type Opts func(c *Client)
+// Option is an option used to configure Client
+type Option func(c *Client)
 
-// WithOptsFollow enable to follow log stream (default: false).
+// WithFollow enable to follow log stream (default: false).
 //
 // If the follow option is enabled, the client will follow the log stream of the resources.
 // If the given resource type is not a pod, the client will also watch for new pods of the resource.
-func WithOptsFollow(value bool) Opts {
+func WithFollow(value bool) Option {
 	return func(c *Client) {
 		c.follow = value
 	}
 }
 
-// WithOptsTimestamps enable timestamps at the beginning of the log line (default: true)
-func WithOptsTimestamps(value bool) Opts {
+// WithTimestamps enable timestamps at the beginning of the log line (default: true)
+func WithTimestamps(value bool) Option {
 	return func(c *Client) {
 		c.timestamps = value
 	}
 }
 
-// WithOptsJSONFields configure the json option (default: none).
-//
+// WithJSONFields configure the json option (default: none).
 // If enabled, log lines will be handled as JSON objects and only the given fields will be printed.
-func WithOptsJSONFields(fields ...string) Opts {
+func WithJSONFields(fields ...string) Option {
 	return func(c *Client) {
 		c.jsonFields = fields
 		c.jsonFieldsLen = len(fields)
 		if c.jsonFieldsLen > 0 {
 			// disable timestamps so we can parse the json object
-			WithOptsTimestamps(true)(c)
+			WithTimestamps(false)(c)
 		}
 	}
 }
 
 // New creates a new Client
-func New(k8s *kubernetes.Clientset, opts ...Opts) *Client {
+func New(k8s *kubernetes.Clientset, opts ...Option) *Client {
 	c := &Client{k8s: k8s, timestamps: true}
 	for _, opt := range opts {
 		opt(c)
