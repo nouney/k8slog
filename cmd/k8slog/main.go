@@ -3,12 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/nouney/k8slog/pkg/colorpicker"
 	"github.com/nouney/k8slog/pkg/k8s"
-	"github.com/nouney/k8slog/pkg/k8slog"
+	"github.com/nouney/k8slog/pkg/k8slog2"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 )
@@ -18,6 +19,7 @@ var (
 	flagColors     = true
 	flagTimestamp  = true
 	flagPrefix     = true
+	flagDebug      = false
 	flagKubeconfig = ""
 	flagJSONFields = []string{}
 )
@@ -42,11 +44,12 @@ var cmd = &cobra.Command{
 
 		klog := k8slog.New(
 			k8s,
-			k8slog.WithOptsTimestamps(flagTimestamp),
-			k8slog.WithOptsJSONFields(flagJSONFields...),
-			k8slog.WithOptsFollow(flagFollow),
+			k8slog.WithTimestamps(flagTimestamp),
+			k8slog.WithJSONFields(flagJSONFields...),
+			k8slog.WithFollow(flagFollow),
+			k8slog.WithDebug(flagDebug),
 		)
-		out, err := klog.Logs(args...)
+		iter, err := klog.Logs(args...)
 		if err != nil {
 			return err
 		}
@@ -54,11 +57,13 @@ var cmd = &cobra.Command{
 		cp := colorpicker.New()
 		format := formatter(cp)
 		for {
-			logline, ok := <-out
-			if !ok {
+			line, err := iter()
+			if err == io.EOF {
 				break
+			} else if err != nil {
+				return err
 			}
-			fmt.Print(format(&logline))
+			fmt.Print(format(line))
 		}
 		return nil
 	},
@@ -104,5 +109,6 @@ func init() {
 	cmd.Flags().BoolVarP(&flagFollow, "follow", "f", false, "follow the logs")
 	cmd.Flags().BoolVarP(&flagTimestamp, "timestamp", "t", true, "print timestamp")
 	cmd.Flags().BoolVarP(&flagPrefix, "prefix", "p", true, "print prefix")
+	cmd.Flags().BoolVar(&flagDebug, "debug", false, "print debug logs")
 	cmd.Flags().StringSliceVarP(&flagJSONFields, "json", "j", nil, "json log only, print a specific field")
 }

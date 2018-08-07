@@ -14,16 +14,23 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+var _ = v1.PodLogOptions{}
+
 type (
 	// Client is a kubernetes client
-	Client = kubernetes.Clientset
 	// PodLogOptions is an alias to kubernetes' PodLogOptions
 	PodLogOptions = v1.PodLogOptions
 	// Pod is an alias to kubernetes' Pod
-	Pod = v1.Pod
+	Pod     = v1.Pod
+	Service = v1.Service
+	Deploy  = appsv1.Deployment
 	// LabelSelector is an alias to kubernetes' LabelSelector
 	LabelSelector = metav1.LabelSelector
 )
+
+type Client struct {
+	*kubernetes.Clientset
+}
 
 // NewClient creates a new kubernetes client
 //
@@ -37,12 +44,47 @@ func NewClient(kubeconfig string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	return &Client{client}, nil
+}
+
+func (c Client) ListDeployments(ns string) ([]appsv1.Deployment, error) {
+	deploySvc := c.AppsV1().Deployments(ns)
+	deploys, err := deploySvc.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return deploys.Items, nil
+}
+
+func (c Client) ListServices(ns string) ([]v1.Service, error) {
+	serviceSvc := c.CoreV1().Services(ns)
+	svcs, err := serviceSvc.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return svcs.Items, nil
+}
+
+// ListPods lists pods matching the label selector
+func (c Client) ListPods(ns string, selector *LabelSelector) ([]v1.Pod, error) {
+	podsSvc := c.CoreV1().Pods(ns)
+	pods, err := podsSvc.List(metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(selector)})
+	if err != nil {
+		return nil, err
+	}
+	return pods.Items, nil
+}
+
+// GetPodLogs gets logs of a pod
+func (c Client) GetPodLogs(ns, name string, opts *PodLogOptions) (io.ReadCloser, error) {
+	podsSvc := c.CoreV1().Pods(ns)
+	req := podsSvc.GetLogs(name, opts)
+	return req.Stream()
 }
 
 // GetDeployment gets a Deployment object
-func GetDeployment(k8s *Client, ns, name string) (*appsv1.Deployment, error) {
-	deploySvc := k8s.AppsV1().Deployments(ns)
+func (c Client) GetDeployment(ns, name string) (*appsv1.Deployment, error) {
+	deploySvc := c.AppsV1().Deployments(ns)
 	return deploySvc.Get(name, metav1.GetOptions{})
 }
 
@@ -64,34 +106,26 @@ func GetService(k8s *Client, ns, name string) (*v1.Service, error) {
 	return ssSvc.Get(name, metav1.GetOptions{})
 }
 
-// ListPods lists pods matching the label selector
-func ListPods(k8s *Client, ns string, selector *LabelSelector) ([]v1.Pod, error) {
+func ListAllPods(k8s *Client, ns string) ([]v1.Pod, error) {
 	podsSvc := k8s.CoreV1().Pods(ns)
-	pods, err := podsSvc.List(metav1.ListOptions{LabelSelector: metav1.FormatLabelSelector(selector)})
+	pods, err := podsSvc.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
 }
 
-// GetPodLogs gets logs of a pod
-func GetPodLogs(k8s *Client, ns, name string, opts *PodLogOptions) (io.ReadCloser, error) {
-	podsSvc := k8s.CoreV1().Pods(ns)
-	req := podsSvc.GetLogs(name, opts)
-	return req.Stream()
-}
-
 // WatchPods watches pods matching the label selector
-func WatchPods(k8s *Client, ns string, selector *LabelSelector, onAdd func(*v1.Pod), onUpdate func(*v1.Pod, *v1.Pod), onDelete func(*v1.Pod)) func() {
+func (c Client) WatchPods(ns string, selector *LabelSelector, onAdd func(*v1.Pod), onUpdate func(*v1.Pod, *v1.Pod), onDelete func(*v1.Pod)) func() {
 	_, eController := cache.NewInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				options.LabelSelector = metav1.FormatLabelSelector(selector)
-				return k8s.CoreV1().Pods(ns).List(options)
+				return c.CoreV1().Pods(ns).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				options.LabelSelector = metav1.FormatLabelSelector(selector)
-				return k8s.CoreV1().Pods(ns).Watch(options)
+				return c.CoreV1().Pods(ns).Watch(options)
 			},
 		},
 		&v1.Pod{},
@@ -110,6 +144,82 @@ func WatchPods(k8s *Client, ns string, selector *LabelSelector, onAdd func(*v1.P
 			DeleteFunc: func(obj interface{}) {
 				if onDelete != nil {
 					onDelete(obj.(*v1.Pod))
+				}
+			},
+		},
+	)
+	stop := make(chan struct{})
+	go eController.Run(stop)
+	return func() {
+		stop <- struct{}{}
+	}
+}
+
+// WatchServices watches services
+func (c Client) WatchServices(ns string, onAdd func(*v1.Service), onUpdate func(*v1.Service, *v1.Service), onDelete func(*v1.Service)) func() {
+	_, eController := cache.NewInformer(
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return c.CoreV1().Services(ns).List(metav1.ListOptions{})
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return c.CoreV1().Services(ns).Watch(metav1.ListOptions{})
+			},
+		},
+		&v1.Service{},
+		0,
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				if onAdd != nil {
+					onAdd(obj.(*v1.Service))
+				}
+			},
+			UpdateFunc: func(old, new interface{}) {
+				if onUpdate != nil {
+					onUpdate(old.(*v1.Service), new.(*v1.Service))
+				}
+			},
+			DeleteFunc: func(obj interface{}) {
+				if onDelete != nil {
+					onDelete(obj.(*v1.Service))
+				}
+			},
+		},
+	)
+	stop := make(chan struct{})
+	go eController.Run(stop)
+	return func() {
+		stop <- struct{}{}
+	}
+}
+
+// WatchDeploys watches deploys
+func (c Client) WatchDeploys(ns string, onAdd func(*Deploy), onUpdate func(*Deploy, *Deploy), onDelete func(*Deploy)) func() {
+	_, eController := cache.NewInformer(
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return c.AppsV1().Deployments(ns).List(metav1.ListOptions{})
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return c.AppsV1().Deployments(ns).Watch(metav1.ListOptions{})
+			},
+		},
+		&Deploy{},
+		0,
+		cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				if onAdd != nil {
+					onAdd(obj.(*Deploy))
+				}
+			},
+			UpdateFunc: func(old, new interface{}) {
+				if onUpdate != nil {
+					onUpdate(old.(*Deploy), new.(*Deploy))
+				}
+			},
+			DeleteFunc: func(obj interface{}) {
+				if onDelete != nil {
+					onDelete(obj.(*Deploy))
 				}
 			},
 		},
